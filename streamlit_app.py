@@ -68,7 +68,7 @@ CONDITIONS = ['Pre', 'Post', 'Standing', 'Sitting']
 
 # ── Change this to your repo URL after uploading koa_model.joblib ──
 MODEL_URL = (
-    "https://raw.githubusercontent.com/focuzguy1/"
+    "https://raw.githubusercontent.com/focuzdev/"
     "Pain-Level-Prediction/main/koa_model.joblib"
 )
 
