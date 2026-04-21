@@ -80,7 +80,7 @@ CONDITIONS = ['Pre', 'Post', 'Standing', 'Sitting']
 # ── Update this URL after uploading koa_model.joblib to GitHub ──
 MODEL_URL = (
     "https://raw.githubusercontent.com/focuzguy1/"
-    "Pain-Level-Prediction/main/koa_model.joblib"
+    "Pain-Level-Prediction/master/koa_model.joblib"
 )
 
 # ─────────────────────────────────────────────────────────────
