@@ -408,7 +408,7 @@ BANDS      = ['Alpha', 'Beta', 'Theta', 'Delta', 'Gamma']
 CONDITIONS = ['Pre', 'Post', 'Standing', 'Sitting']
 
 MODEL_URL = (
-    "https://raw.githubusercontent.com/focuzdev/"
+    "https://raw.githubusercontent.com/focuzguy1/"
     "Pain-Level-Prediction/master/koa_model.joblib"
 )
 
@@ -765,33 +765,70 @@ def main():
           <div class="card-title">EEG Power Spectral Density Values (μV²)</div>
         """, unsafe_allow_html=True)
 
-        st.markdown("""
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;
-                    border-left:4px solid #10b981;border-radius:8px;
-                    padding:.8rem 1rem;font-size:.82rem;color:#14532d;
-                    margin-bottom:1rem;">
-          <b>Key EEG biomarkers:</b>
-          Frontal Alpha Asymmetry (Fp1 vs Fp2) ·
-          Theta/Beta Ratio (Fz) · Temporal Delta Power (T7+T8)
-          <br>If only Pre-task data is available, use the same values for all conditions.
-        </div>
-        """, unsafe_allow_html=True)
+        # ── Clinical-only toggle ─────────────────────────────
+        eeg_mode = st.radio(
+            "Input mode",
+            options=["🧠  Full EEG + Clinical", "🩺  Clinical Features Only"],
+            index=0,
+            horizontal=True,
+            help=(
+                "Select 'Clinical Only' if EEG data is not available. "
+                "The model will predict using clinical features alone — "
+                "EEG inputs are set to a neutral baseline automatically."
+            )
+        )
+        clinical_only = (eeg_mode == "🩺  Clinical Features Only")
 
-        for ch in CHANNELS:
-            with st.expander(f"📡  Channel {ch}", expanded=False):
+        if clinical_only:
+            # Set all EEG inputs to 0 (neutral after log transform)
+            for ch in CHANNELS:
                 for band in BANDS:
-                    st.markdown(
-                        f"<div class='input-label'>{band} band</div>",
-                        unsafe_allow_html=True
-                    )
-                    cols = st.columns(4)
-                    for i, cond in enumerate(CONDITIONS):
-                        key = f'{ch}_{band}_{cond}'
-                        with cols[i]:
-                            inputs[key] = st.number_input(
-                                cond, min_value=0.0, value=1000.0,
-                                step=100.0, key=key, format="%.1f"
-                            )
+                    for cond in CONDITIONS:
+                        inputs[f'{ch}_{band}_{cond}'] = 0.0
+            st.markdown("""
+            <div style="background:#fef3c7;border:1px solid #fcd34d;
+                        border-left:4px solid #f59e0b;border-radius:8px;
+                        padding:.9rem 1rem;font-size:.83rem;color:#78350f;
+                        margin-top:.75rem;">
+              <b>⚠️ Clinical-Only Mode Active</b><br>
+              All EEG features are set to a neutral baseline (zero).
+              The model will predict based on clinical features only
+              (KL Grade, McGill, BMI, Duration, cognitive scores).<br><br>
+              <b>Note:</b> Predictions in this mode may be less accurate than
+              when full EEG data is provided, as EEG biomarkers contribute
+              approximately 20% of the model's feature weight.
+            </div>
+            """, unsafe_allow_html=True)
+
+        else:
+            st.markdown("""
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;
+                        border-left:4px solid #10b981;border-radius:8px;
+                        padding:.8rem 1rem;font-size:.82rem;color:#14532d;
+                        margin-bottom:1rem;">
+              <b>Key EEG biomarkers:</b>
+              Frontal Alpha Asymmetry (Fp1 vs Fp2) ·
+              Theta/Beta Ratio (Fz) · Temporal Delta Power (T7+T8)
+              <br>If only Pre-task data is available, use the same value
+              across all conditions (Pre / Post / Standing / Sitting).
+            </div>
+            """, unsafe_allow_html=True)
+
+            for ch in CHANNELS:
+                with st.expander(f"📡  Channel {ch}", expanded=False):
+                    for band in BANDS:
+                        st.markdown(
+                            f"<div class='input-label'>{band} band</div>",
+                            unsafe_allow_html=True
+                        )
+                        cols = st.columns(4)
+                        for i, cond in enumerate(CONDITIONS):
+                            key = f'{ch}_{band}_{cond}'
+                            with cols[i]:
+                                inputs[key] = st.number_input(
+                                    cond, min_value=0.0, value=1000.0,
+                                    step=100.0, key=key, format="%.1f"
+                                )
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -847,7 +884,7 @@ def main():
         st.markdown('<div class="card-title">Patient Summary</div>',
                     unsafe_allow_html=True)
 
-        p1, p2, p3, p4 = st.columns(4)
+        p1, p2, p3, p4, p5 = st.columns(5)
         with p1:
             kl_display = {0:"Normal",1:"Doubtful",2:"Minimal",
                           3:"Moderate",4:"Severe"}
@@ -861,6 +898,10 @@ def main():
         with p4:
             st.metric("Symptom Duration",
                       f"{inputs.get('Duration_of_symptom', '—')} yrs")
+        with p5:
+            # Check if EEG data is available (non-zero Fp1 Alpha Pre)
+            has_eeg = inputs.get('Fp1_Alpha_Pre', 0) != 0.0
+            st.metric("EEG Data", "✅ Available" if has_eeg else "⚠️ Not used")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -895,12 +936,30 @@ def main():
                     # Result box
                     with res_col:
                         note = {
-                            1: "EEG and clinical markers are within normal range. No significant pain burden detected.",
+                            1: "Clinical markers are within normal range. No significant pain burden detected.",
                             2: "Mild pain indicators present. Consider monitoring KL grade progression and symptom duration.",
                             3: "Moderate pain burden indicated. Significant functional impact is likely.",
                             4: "Severe pain profile detected. Consistent with advanced KOA — clinical review recommended."
                         }
                         conf = proba.get(pred, 0)
+                        # Detect clinical-only mode from inputs
+                        eeg_vals = [inputs.get(f'Fp1_Alpha_Pre', -1)]
+                        is_clinical_only = all(v == 0.0 for v in eeg_vals)
+                        mode_badge = (
+                            "<div style='display:inline-block;"
+                            "background:#fef3c7;color:#92400e;"
+                            "font-size:.7rem;font-weight:600;"
+                            "padding:2px 10px;border-radius:10px;"
+                            "margin-top:.5rem;border:1px solid #fcd34d;'>"
+                            "🩺 Clinical-Only Mode</div>"
+                            if is_clinical_only else
+                            "<div style='display:inline-block;"
+                            "background:#d1fae5;color:#065f46;"
+                            "font-size:.7rem;font-weight:600;"
+                            "padding:2px 10px;border-radius:10px;"
+                            "margin-top:.5rem;border:1px solid #6ee7b7;'>"
+                            "🧠 Full EEG + Clinical</div>"
+                        )
                         st.markdown(f"""
                         <div class="result-panel"
                              style="background:{PAIN_BG[pred]};
@@ -914,6 +973,7 @@ def main():
                           <div class="result-conf" style="color:#6b7280;">
                             Model confidence: <strong>{conf*100:.1f}%</strong>
                           </div>
+                          {mode_badge}
                           <div class="result-note" style="color:#6b7280;">
                             {note[pred]}
                           </div>
