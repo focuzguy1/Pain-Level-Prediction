@@ -11,7 +11,7 @@
 
 *A clinical decision support tool that predicts pain levels in Knee Osteoarthritis (KOA) patients using electroencephalography (EEG) biomarkers and clinical features.*
 
-[**🚀 Live Demo**](https://your-app-url.streamlit.app) &nbsp;·&nbsp;
+[**🚀 Live Demo**](https://pain-levels-prediction.streamlit.app/) &nbsp;·&nbsp;
 [**📄 Paper**](#) &nbsp;·&nbsp;
 [**📊 Dataset**](koa_erd_processed.csv)
 
