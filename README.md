@@ -300,22 +300,6 @@ This tool is developed for **research and educational purposes only**. It is not
 
 ---
 
-## 📄 Citation
-
-If you use this code or model in your research, please cite:
-
-```bibtex
-@software{koa_pain_predictor_2025,
-  title   = {KOA Pain Level Predictor: EEG-based Machine Learning
-             for Knee Osteoarthritis Pain Classification},
-  author  = {[Your Name]},
-  year    = {2025},
-  url     = {https://github.com/focuzguy1/Pain-Level-Prediction}
-}
-```
-
----
-
 ## 📬 Contact
 
 For questions, collaborations, or clinical feedback, please open a [GitHub Issue](https://github.com/focuzguy1/Pain-Level-Prediction/issues).
